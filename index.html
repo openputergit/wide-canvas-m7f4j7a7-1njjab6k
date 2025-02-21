@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLM Platform</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .loading {
+            @apply animate-pulse bg-gray-200;
+        }
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-lg" v-if="isLoggedIn">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <span class="text-xl font-bold text-blue-600">MLM Platform</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-gray-700">Welcome, {{user.username}}</span>
+                        <button @click="logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Auth Forms -->
+        <div v-if="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <div>
+                    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                        {{isRegistering ? 'Create your account' : 'Sign in to your account'}}
+                    </h2>
+                </div>
+                <form class="mt-8 space-y-6" @submit.prevent="isRegistering ? register() : login()">
+                    <div class="rounded-md shadow-sm -space-y-px">
+                        <div>
+                            <input v-model="form.username" type="text" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Username">
+                        </div>
+                        <div>
+                            <input v-model="form.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Password">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            {{isRegistering ? 'Register' : 'Sign in'}}
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="#" @click.prevent="isRegistering = !isRegistering" class="text-blue-600 hover:text-blue-500">
+                            {{isRegistering ? 'Already have an account? Sign in' : 'Need an account? Register'}}
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div v-else class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-900">Total Earnings</h3>
+                    <p class="mt-2 text-3xl font-bold text-blue-600">${{stats.earnings}}</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-900">Direct Referrals</h3>
+                    <p class="mt-2 text-3xl font-bold text-green-600">{{stats.referrals}}</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-900">Network Size</h3>
+                    <p class="mt-2 text-3xl font-bold text-purple-600">{{stats.networkSize}}</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button @click="showReferralLink" class="p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center">
+                            <i class="bi bi-share text-2xl text-blue-600"></i>
+                            <span class="mt-2 text-sm">Share Referral Link</span>
+                        </button>
+                        <button @click="showWithdraw" class="p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center">
+                            <i class="bi bi-wallet2 text-2xl text-green-600"></i>
+                            <span class="mt-2 text-sm">Withdraw Earnings</span>
+                        </button>
+                        <button @click="showGenealogy" class="p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center">
+                            <i class="bi bi-diagram-3 text-2xl text-purple-600"></i>
+                            <span class="mt-2 text-sm">View Genealogy</span>
+                        </button>
+                        <button @click="showProfile" class="p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center">
+                            <i class="bi bi-person-circle text-2xl text-gray-600"></i>
+                            <span class="mt-2 text-sm">Edit Profile</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+                    <div class="space-y-4">
+                        <div v-for="activity in recentActivity" :key="activity.id" class="flex items-center justify-between p-4 border rounded-lg">
+                            <div class="flex items-center">
+                                <i :class="activity.icon" class="text-2xl mr-4" :style="{color: activity.color}"></i>
+                                <div>
+                                    <p class="font-medium text-gray-900">{{activity.title}}</p>
+                                    <p class="text-sm text-gray-500">{{activity.description}}</p>
+                                </div>
+                            </div>
+                            <span class="text-sm text-gray-500">{{activity.time}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    isLoggedIn: false,
+                    isRegistering: false,
+                    form: {
+                        username: '',
+                        password: ''
+                    },
+                    user: null,
+                    stats: {
+                        earnings: 0,
+                        referrals: 0,
+                        networkSize: 0
+                    },
+                    recentActivity: [
+                        {
+                            id: 1,
+                            icon: 'bi bi-person-plus',
+                            color: '#2563EB',
+                            title: 'New Referral Joined',
+                            description: 'John Doe joined your network',
+                            time: '5 minutes ago'
+                        },
+                        {
+                            id: 2,
+                            icon: 'bi bi-cash',
+                            color: '#059669',
+                            title: 'Commission Earned',
+                            description: 'Earned $50 from level 1 commission',
+                            time: '1 hour ago'
+                        }
+                    ]
+                }
+            },
+            methods: {
+                async login() {
+                    // Simulate login
+                    this.isLoggedIn = true
+                    this.user = {
+                        username: this.form.username,
+                        id: 'user123'
+                    }
+                    this.loadDashboardData()
+                },
+                async register() {
+                    // Simulate registration
+                    await this.login()
+                },
+                async logout() {
+                    this.isLoggedIn = false
+                    this.user = null
+                },
+                loadDashboardData() {
+                    // Simulate loading dashboard data
+                    this.stats = {
+                        earnings: 1250,
+                        referrals: 5,
+                        networkSize: 12
+                    }
+                },
+                showReferralLink() {
+                    alert('Your referral link: https://mlm-platform.com/ref/' + this.user.id)
+                },
+                showWithdraw() {
+                    alert('Withdrawal functionality coming soon!')
+                },
+                showGenealogy() {
+                    alert('Genealogy view coming soon!')
+                },
+                showProfile() {
+                    alert('Profile editing coming soon!')
+                }
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
